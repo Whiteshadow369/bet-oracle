@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: bet-oracle-live-backend
+    env: docker
+    repo: https://github.com/yourusername/bet-oracle-live-mvp.git
+    dockerfilePath: ./backend/Dockerfile
+    envVars:
+      - key: ODDS_API_KEY
+        value: your_api_key_here
+      - key: POLL_INTERVAL
+        value: "5"

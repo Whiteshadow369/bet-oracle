@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Bet-Oracle Live MVP</title>
+<style>body{font-family:Arial,Helvetica,sans-serif;background:#071022;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0} .container{width:960px;max-width:95%;display:flex;gap:16px} .card{background:#0f1429;padding:16px;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,0.6);flex:1} h2{margin:0 0 8px 0} .odds{max-height:420px;overflow:auto} .item{padding:8px;border-bottom:1px solid rgba(255,255,255,0.03);display:flex;justify-content:space-between} .badge{background:#1f6feb;padding:4px 8px;border-radius:8px;color:#fff;font-weight:600} .controls{display:flex;gap:8px;margin-bottom:8px} input{padding:8px;border-radius:8px;border:none;width:100%;background:#071022;color:#fff} button{padding:8px 10px;border-radius:8px;border:none;background:#1f6feb;color:#fff;cursor:pointer}</style></head><body>
+<div class="container">
+  <div class="card">
+    <h2>Live Odds</h2>
+    <div class="controls">
+      <input id="backendUrl" placeholder="Backend URL (e.g. http://localhost:8000)" />
+      <button id="connectBtn">Connect WS</button>
+    </div>
+    <div id="odds" class="odds"></div>
+  </div>
+  <div class="card" style="width:360px">
+    <h2>Signals</h2>
+    <div id="signals" class="odds"></div>
+    <h2 style="margin-top:12px">Predict</h2>
+    <input id="seq" placeholder="1,2,3,4" />
+    <button id="predBtn">Predict (remote)</button>
+    <pre id="predOut">No prediction yet</pre>
+  </div>
+</div>
+<script>
+let ws;
+const oddsEl = document.getElementById('odds');
+const signalsEl = document.getElementById('signals');
+const backendInput = document.getElementById('backendUrl');
+document.getElementById('connectBtn').addEventListener('click', ()=>{
+  const url = backendInput.value.trim();
+  if(!url){ alert('Enter backend base URL'); return; }
+  let wsurl = url.replace(/^http/, 'ws') + '/ws';
+  if(url.startsWith('https')) wsurl = url.replace(/^https/, 'wss') + '/ws';
+  try{
+    ws = new WebSocket(wsurl);
+    ws.onopen = ()=>{ console.log('WS open'); alert('WS connected'); }
+    ws.onmessage = (ev)=>{
+      try{
+        const d = JSON.parse(ev.data);
+        if(d.type === 'odds_update'){
+          renderOdds(d.odds); renderSignals(d.signals);
+        }
+      }catch(e){ console.error(e); }
+    }
+    ws.onclose = ()=>{ alert('WS closed'); }
+  }catch(e){ alert('WS connect error: '+e); }
+});
+function renderOdds(arr){ oddsEl.innerHTML=''; if(!arr||arr.length===0){ oddsEl.innerHTML='<div class="item">No odds loaded</div>'; return; } arr.forEach(o=>{ const div=document.createElement('div'); div.className='item'; const left=document.createElement('div'); left.innerHTML='<strong>'+ (o.match||o.match_id) +'</strong><div style="color:#9aa; font-size:13px">'+ (o.bookmaker||'') +'</div>'; const right=document.createElement('div'); right.innerHTML='<div class="badge">'+JSON.stringify(o.odds)+'</div>'; div.appendChild(left); div.appendChild(right); oddsEl.appendChild(div); }) }
+function renderSignals(arr){ signalsEl.innerHTML=''; if(!arr||arr.length===0){ signalsEl.innerHTML = '<div class="item">No signals</div>'; return; } arr.forEach(s=>{ const div=document.createElement('div'); div.className='item'; div.innerHTML = '<div><strong>'+s.market+'</strong><div style="color:#9aa; font-size:13px">match: '+s.match_id+'</div></div><div><span class="badge">'+s.side+' ('+s.confidence+')</span></div>'; signalsEl.appendChild(div); }) }
+document.getElementById('predBtn').addEventListener('click', async ()=>{ const base = backendInput.value.trim(); if(!base){ alert('Set backend URL'); return; } const seq = document.getElementById('seq').value.split(',').map(s=>s.trim()).filter(Boolean).map(Number); const res = await fetch(base.replace(/\/$/,'') + '/predict', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({sequence: seq})}); const j = await res.json(); document.getElementById('predOut').textContent = JSON.stringify(j, null, 2); });
+</script>
+</body></html>
