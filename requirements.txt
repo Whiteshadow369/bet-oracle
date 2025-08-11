@@ -3,7 +3,7 @@ uvicorn[standard]==0.22.0
 httpx==0.24.1
 python-dotenv==1.0.0
 redis==5.0.1
-pydantic==2.5.0
+pydantic==1.10.22
 websockets==11.0.3
 gunicorn==21.2.0
 numpy==1.26.4
